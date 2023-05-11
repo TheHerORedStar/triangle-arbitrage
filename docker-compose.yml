@@ -1,0 +1,47 @@
+version: '3.7'
+
+services:
+  # InfluxDB
+  influxdb:
+    image: quay.io/influxdb/influxdb:v2.0.4
+    container_name: influxdb
+    volumes:
+      - ./influxdbv2:/root/.influxdbv2
+    ports:
+      - '8086:8086'
+  #    restart: always
+  influxdb_cli:
+    links:
+      - influxdb
+    image: quay.io/influxdb/influxdb:v2.0.4
+    entrypoint: influx setup --bucket Binance -t Q4JmvniSEwpqjdA_i5V_Ygl691cz_JiErHpohNzFk3tLnVtF6QQEeDS-RaWm5VI6yE_g4XIR_o4dic3K9eszpw== -o Tokenize --username=admin --password=fetch123! --host=http://influxdb:8086 -f
+    restart: on-failure:20
+    depends_on:
+      - influxdb
+  # Server
+  backend:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    image: backend:local
+    container_name: backend
+    logging:
+      driver: 'json-file'
+      options:
+        max-file: '5'
+        max-size: '10m'
+    ports:
+      - '8001:8001'
+    environment:
+      PORT: 8001
+      INFLUX_URL: http://localhost:8086
+      INFLUX_TOKEN: Q4JmvniSEwpqjdA_i5V_Ygl691cz_JiErHpohNzFk3tLnVtF6QQEeDS-RaWm5VI6yE_g4XIR_o4dic3K9eszpw==
+      INFLUX_ORG: Tokenize
+      INFLUX_BUCKET: Binance
+    volumes:
+      - ./:/app
+      - /app/node_modules
+    restart: always
+    depends_on:
+      - influxdb
+      - influxdb_cli
